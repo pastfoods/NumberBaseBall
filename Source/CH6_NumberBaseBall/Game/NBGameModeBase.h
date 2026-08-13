@@ -36,4 +36,12 @@ protected:
 	FString SecretNumberString;
 	
 	TArray<TObjectPtr<ANBPlayerController>> AllPlayerControllers;
+	
+	FTimerHandle GameResetNotificationTimerHandle;
+	FTimerHandle GameStartNotificationTimerHandle;
+	
+	bool bIsRoundEnd = false;
+	
+	void HandleGameResetNotification();
+	void HandleGameStartNotification();
 };

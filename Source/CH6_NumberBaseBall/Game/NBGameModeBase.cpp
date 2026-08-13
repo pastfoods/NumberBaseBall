@@ -105,6 +105,12 @@ void ANBGameModeBase::BeginPlay()
 void ANBGameModeBase::PrintChatMessageString(ANBPlayerController* InChattingPlayerController,
 	const FString& InChatMessageString)
 {
+	if (bIsRoundEnd ==true)
+	{
+		InChattingPlayerController->ClientRPCPrintChatMessageString(TEXT("라운드 종료 중입니다. 잠시 후 다시 시도하세요."));
+		return;
+	}
+	
 	ANBPlayerState* NBPS = InChattingPlayerController->GetPlayerState<ANBPlayerState>();
 
 	if (IsValid(NBPS) == true && NBPS->CurrentGeuessCount >= NBPS->MaxGuessCount)
@@ -162,11 +168,6 @@ void ANBGameModeBase::ResetGame()
 		{
 			NBPS->CurrentGeuessCount = 0;
 		}
-		if (IsValid(NBPlayerController) == true)
-		{
-			FString ResetMessageStirng = NBPlayerController->NotificationText.ToString() + TEXT(" 게임이 초기화되었습니다.");
-			NBPlayerController->NotificationText = FText::FromString(ResetMessageStirng);
-		}
 	}
 }
 
@@ -174,6 +175,7 @@ void ANBGameModeBase::JudgeGame(ANBPlayerController* InChattingPlayerController,
 {
 	if (3 == InStrikeCount)
 	{
+		bIsRoundEnd = true;
 		ANBPlayerState* NBPS = InChattingPlayerController->GetPlayerState<ANBPlayerState>();
 		for (const auto& NBPlayerController : AllPlayerControllers)
 		{
@@ -184,7 +186,7 @@ void ANBGameModeBase::JudgeGame(ANBPlayerController* InChattingPlayerController,
 				
 			}
 		}
-		ResetGame();
+		GetWorldTimerManager().SetTimer(GameResetNotificationTimerHandle, this, &ANBGameModeBase::HandleGameResetNotification, 2.0f, false);
 	}
 	else
 	{
@@ -203,12 +205,32 @@ void ANBGameModeBase::JudgeGame(ANBPlayerController* InChattingPlayerController,
 		}
 		if (true == bIsDraw)
 		{
+			bIsRoundEnd = true;
 			for (const auto& NBPlayerController : AllPlayerControllers)
 			{
 				NBPlayerController->NotificationText = FText::FromString(TEXT("Draw.."));
 				
 			}
-			ResetGame();
+			GetWorldTimerManager().SetTimer(GameResetNotificationTimerHandle, this, &ANBGameModeBase::HandleGameResetNotification, 2.0f, false);
 		}
 	}
+}
+
+void ANBGameModeBase::HandleGameResetNotification()
+{
+	ResetGame();
+	for (const auto& NBPlayerController : AllPlayerControllers)
+	{
+		if (IsValid(NBPlayerController) == true)
+			NBPlayerController->NotificationText = FText::FromString(TEXT("게임이 초기화 되었습니다."));
+	}
+	GetWorldTimerManager().SetTimer(GameStartNotificationTimerHandle,this,&ANBGameModeBase::HandleGameStartNotification,2.0f,false);
+}
+
+void ANBGameModeBase::HandleGameStartNotification()
+{
+	for (const auto& NBPlayerController : AllPlayerControllers)
+		if (IsValid(NBPlayerController)==true)
+			NBPlayerController->NotificationText = FText::FromString(TEXT("게임이 시작되었습니다."));
+	bIsRoundEnd = false;
 }
